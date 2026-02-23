@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YC Interview Drill</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { 
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a0a; color: #e5e5e5; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px;
+  }
+  .container { max-width: 640px; width: 100%; }
+  .category { 
+    font-size: 12px; text-transform: uppercase; letter-spacing: 2px; 
+    color: #666; margin-bottom: 12px; 
+  }
+  .question { 
+    font-size: 28px; font-weight: 600; line-height: 1.3; 
+    color: #fff; margin-bottom: 24px; min-height: 80px;
+  }
+  .speaker {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #1a1a2e; border: 1px solid #333; border-radius: 8px;
+    padding: 8px 14px; font-size: 14px; color: #a0a0ff; margin-bottom: 32px;
+  }
+  .hint-btn {
+    background: none; border: 1px solid #333; border-radius: 8px;
+    color: #888; padding: 10px 16px; font-size: 14px; cursor: pointer;
+    width: 100%; text-align: left; transition: all 0.2s;
+  }
+  .hint-btn:hover { border-color: #555; color: #aaa; }
+  .hint-btn.open { border-color: #444; color: #ccc; }
+  .hint-text {
+    display: none; padding: 16px; margin-top: 8px;
+    background: #111; border-radius: 8px; font-size: 15px;
+    line-height: 1.6; color: #999;
+  }
+  .hint-text.show { display: block; }
+  .actions { 
+    display: flex; gap: 12px; margin-top: 40px; 
+    position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 48px); max-width: 640px;
+  }
+  .btn {
+    flex: 1; padding: 16px; border-radius: 12px; font-size: 16px;
+    font-weight: 600; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .btn-next { background: #fff; color: #000; }
+  .btn-next:hover { background: #ddd; }
+  .btn-restart { background: #1a1a1a; color: #888; border: 1px solid #333; }
+  .btn-restart:hover { border-color: #555; color: #aaa; }
+  .progress { 
+    font-size: 13px; color: #444; text-align: center; 
+    margin-top: 16px; position: fixed; bottom: 16px;
+  }
+  .first-q { font-size: 11px; color: #555; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="category" id="category"></div>
+  <div class="question" id="question"></div>
+  <div class="speaker" id="speaker"></div>
+  <button class="hint-btn" id="hintBtn" onclick="toggleHint()">Show hint answer</button>
+  <div class="hint-text" id="hintText"></div>
+</div>
+<div class="actions">
+  <button class="btn btn-restart" onclick="restart()">Restart</button>
+  <button class="btn btn-next" onclick="next()">Next →</button>
+</div>
+<div class="progress" id="progress"></div>
+
+<script>
+const questions = [
+  // Product & Idea
+  { cat: "Product & Idea", q: "So what are you working on?", speaker: "Vu", hint: "We trade prediction markets using our ML models. We started out building indices, but found the markets are surprisingly inefficient. So Vojta built a model that predicts weather outcomes better than the market prices them." },
+  { cat: "Product & Idea", q: "Why did you pivot?", speaker: "Vu", hint: "We were building indices for prediction markets. To test them we started trading on the data ourselves, and honestly we just found way more edge there than we expected. So we kept going." },
+  { cat: "Product & Idea", q: "Do you have a demo?", speaker: "Rob + Vojta", hint: "Yeah — Rob can pull up our data dashboard, show the live market data we're ingesting and how the pipeline works. And Vojta can walk you through the model and some early P&L from our trading." },
+  { cat: "Product & Idea", q: "Where is the rocket science here?", speaker: "Vojta", hint: "The ML models. Vojta has a DPhil from Oxford in quantum algorithm theory — he brings serious quantitative rigor. We combine prediction market prices with external data — weather forecasts, historical patterns, real outcomes — to find mispricings." },
+  { cat: "Product & Idea", q: "How is your product different?", speaker: "Vu", hint: "Nobody's built the full quant stack for prediction markets. We built data ingestion, ML pipeline, and execution from scratch — specifically for this asset class." },
+  { cat: "Product & Idea", q: "What's new about what you make?", speaker: "Vojta", hint: "Quantitative infrastructure for prediction markets doesn't exist. We built it. Real-time data ingestion across Kalshi and Polymarket, ML models that find mispricings, execution that acts on them. Nobody else has this." },
+  { cat: "Product & Idea", q: "What are you going to do next?", speaker: "Vu", hint: "Get Vojta's second model into production — it covers all cities with multiple signals per day. Automate execution. Then expand to other categories with repeatable resolution patterns." },
+  { cat: "Product & Idea", q: "Why did you choose this idea?", speaker: "Vojta", hint: "I was frustrated by the lack of empirical validation in research. Markets are meritocratic, intellectually stimulating, and give fast feedback. We're built for small-capacity strategies — prediction markets are the perfect fit." },
+  { cat: "Product & Idea", q: "What have you learned so far?", speaker: "Vu or Rob", hint: "Prediction markets look like gambling but behave like binary options. The pricing is surprisingly inefficient and many participants trade on gut feeling. The infrastructure is years behind traditional markets." },
+  { cat: "Product & Idea", q: "Are you open to changing your idea?", speaker: "Vu", hint: "We already did. Started with indices, moved to trading when we found the bigger opportunity. We follow the edge." },
+  { cat: "Product & Idea", q: "How far along are you?", speaker: "Vu", hint: "We have one model in production that predicts high temperature in New York and sends one signal daily. We turned $1k into $4k in the past 2 weeks live trading this manually. Vojta has built a second model that predicts implied probability distribution at every hour and we're about to start trading it next week." },
+  { cat: "Product & Idea", q: "How does your product work in more detail?", speaker: "Vojta", hint: "We ingest real-time market data from Kalshi and Polymarket. The models combine that with external data like weather forecasts and historical outcomes to estimate the true probability. When the market price diverges enough from our estimate, we trade." },
+
+  // Users & Customers
+  { cat: "Users & Customers", q: "Who needs what you're making?", speaker: "Vu", hint: "Us, first. And anyone who wants to trade prediction markets quantitatively. Right now that's a small group because the tooling doesn't exist. We're building it." },
+  { cat: "Users & Customers", q: "How do you know people want this?", speaker: "Rob", hint: "We want it. We trade every day and felt the pain — fragmented data, slow execution, no infrastructure. Kalshi's market maker program exists because venues need liquidity providers. The demand is there." },
+  { cat: "Users & Customers", q: "How many users do you have?", speaker: "Vu", hint: "No external users. We're our own user. We trade daily on our own models and infrastructure. Revenue is trading profits, not product revenue. We had around 5k users following the indices we published previously." },
+  { cat: "Users & Customers", q: "Who is going to be your first paying customer?", speaker: "Vu", hint: "We are. We pay ourselves through trading profits. Our revenue is P&L, not subscriptions." },
+  { cat: "Users & Customers", q: "How will you get users?", speaker: "Vu", hint: "We don't need users — we trade our own capital. More capital deployed, more profit. Growth means better models and more categories, not more users." },
+
+  // Market & Competition
+  { cat: "Market & Competition", q: "How big an opportunity is there?", speaker: "Vu", hint: "Prediction markets are early but growing fast. Kalshi raised $300M at a $5B valuation. Polymarket is valued at $9B. Volume is doubling year over year. We're building now so we're ready when it 10x's." },
+  { cat: "Market & Competition", q: "Who are your competitors?", speaker: "Vu", hint: "Firms like Jump Trading, Jane Street, SIG are entering prediction markets to provide liquidity. But prediction markets are too small for them to dedicate real resources to. We don't have this constraint and can focus on small-capacity strategies where domain-specific models matter." },
+  { cat: "Market & Competition", q: "What competition do you fear most?", speaker: "Vojta", hint: "A quant fund like Jump or Citadel deciding prediction markets are big enough to care about. But by then we'll have years of domain-specific data and models they'd have to rebuild from scratch." },
+  { cat: "Market & Competition", q: "Why isn't someone already doing this?", speaker: "Vu", hint: "It is too small for traditional quant funds. Prediction market traders aren't quantitative. We're in the middle — quantitative AND native to this asset class." },
+  { cat: "Market & Competition", q: "What do you understand that others don't?", speaker: "Vojta", hint: "Prediction markets look like gambling but behave like a special kind of binary option backed by fundamentals. You need domain-specific models. The pricing is inefficient because most participants aren't quantitative." },
+  { cat: "Market & Competition", q: "What are the key things outsiders don't understand?", speaker: "Vojta", hint: "How inefficient the pricing is. Weather markets — you'd think temperature forecasts would be priced in. They're not. Most traders go by feel, not data. That's our edge." },
+  { cat: "Market & Competition", q: "Someone showed us a similar idea. What else do you have?", speaker: "Vu", hint: "1. Proprietary indices nobody else has. 2. Years of domain-specific data moat. 3. Automation of our entire pipeline with AI. We can show you the live dashboard right now." },
+
+  // Business & Revenue
+  { cat: "Business & Revenue", q: "How will you make money?", speaker: "Vu", hint: "Trading profits on our signals. Based on current market size, we estimate around $3M/year on weather markets alone. The strategies are flexible enough to deploy on other categories as they grow. Long term, this could be hundreds of millions." },
+  { cat: "Business & Revenue", q: "If you succeed, what areas could you expand into?", speaker: "Vu", hint: "More categories — sports, geopolitics, elections. Market making across venues. And as prediction market volume grows, deploying more capital into higher-capacity strategies." },
+  { cat: "Business & Revenue", q: "What is your distribution strategy?", speaker: "Vu", hint: "We don't need distribution — we're our own customer. We grow by deploying into more markets and categories, not by acquiring users." },
+
+  // Team
+  { cat: "Team", q: "How did your team meet?", speaker: "Vu", hint: "Vojta and I met in high school about 20 years ago, built a mobile game together. Rob and I have known each other for 5 years and worked together at Marinade Finance, with Rob on product and me on marketing. I introduced them, and we decided to build Attena together." },
+];
+
+let order = [];
+let idx = 0;
+
+function shuffle(arr) {
+  // Always start with "So what are you working on?"
+  const first = arr.findIndex(q => q.q === "So what are you working on?");
+  const rest = arr.filter((_, i) => i !== first);
+  for (let i = rest.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [rest[i], rest[j]] = [rest[j], rest[i]];
+  }
+  return [arr[first], ...rest];
+}
+
+function render() {
+  const q = order[idx];
+  document.getElementById('category').textContent = q.cat;
+  document.getElementById('question').textContent = q.q;
+  document.getElementById('speaker').innerHTML = '🎤 ' + q.speaker;
+  document.getElementById('hintText').textContent = q.hint;
+  document.getElementById('hintText').classList.remove('show');
+  document.getElementById('hintBtn').classList.remove('open');
+  document.getElementById('hintBtn').textContent = 'Show hint answer';
+  document.getElementById('progress').textContent = (idx + 1) + ' / ' + order.length;
+}
+
+function next() {
+  idx = (idx + 1) % order.length;
+  render();
+}
+
+function restart() {
+  order = shuffle([...questions]);
+  idx = 0;
+  render();
+}
+
+function toggleHint() {
+  const el = document.getElementById('hintText');
+  const btn = document.getElementById('hintBtn');
+  el.classList.toggle('show');
+  btn.classList.toggle('open');
+  btn.textContent = el.classList.contains('show') ? 'Hide hint' : 'Show hint answer';
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' || e.code === 'ArrowRight') { e.preventDefault(); next(); }
+  if (e.code === 'KeyH' || e.code === 'ArrowUp') { e.preventDefault(); toggleHint(); }
+  if (e.code === 'KeyR') { e.preventDefault(); restart(); }
+});
+
+restart();
+</script>
+</body>
+</html>
